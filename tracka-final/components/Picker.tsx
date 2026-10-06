@@ -45,7 +45,7 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
     return out.sort((a, b) => (sort === 'price-high' ? b.price - a.price : sort === 'rating' ? rate(b) - rate(a) : sort === 'fast' ? (a.delivery_days || 99) - (b.delivery_days || 99) : a.price - b.price));
   }, [sellers, ch, genre, max, freeOn, q, sort, stats]);
 
-  async function run(fn: () => Promise<any>) {
+  async function run(fn: () => PromiseLike<any>) {
     setBusy(true);
     setErr('');
     const { error } = (await fn()) || {};
