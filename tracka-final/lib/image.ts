@@ -8,7 +8,7 @@ export async function shrinkImage(file: File, max = 1600, quality = 0.85): Promi
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', quality));
+    const blob: Blob | null = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', quality));
     return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
   } catch {
     return file;
