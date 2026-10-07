@@ -10,8 +10,7 @@ begin
   return new;
 end $$;
 
-drop trigger if exists sellers_notify_new on public.sellers;
-create trigger sellers_notify_new after insert on public.sellers
+create or replace trigger sellers_notify_new after insert on public.sellers
   for each row execute function public.notify_new_seller();
 
 -- Tracka patch 02: promoter packages (several dates), "Hot on Tracka" chart, safer draft prices.
@@ -27,12 +26,16 @@ create table if not exists public.seller_packages (
 );
 create index if not exists seller_packages_seller_idx on public.seller_packages (seller_id, plays);
 alter table public.seller_packages enable row level security;
-drop policy if exists "packages: everyone reads" on public.seller_packages;
-drop policy if exists "packages: I manage mine" on public.seller_packages;
-create policy "packages: everyone reads" on public.seller_packages for select using (true);
-create policy "packages: I manage mine" on public.seller_packages for all
-  using (seller_id = public.my_seller_id() or public.is_admin())
-  with check (seller_id = public.my_seller_id() or public.is_admin());
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'seller_packages' and policyname = 'packages: everyone reads') then
+    create policy "packages: everyone reads" on public.seller_packages for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'seller_packages' and policyname = 'packages: I manage mine') then
+    create policy "packages: I manage mine" on public.seller_packages for all
+      using (seller_id = public.my_seller_id() or public.is_admin())
+      with check (seller_id = public.my_seller_id() or public.is_admin());
+  end if;
+end $$;
 
 -- ---------- 2. Bookings remember the package and every date ----------
 alter table public.bookings
@@ -75,8 +78,7 @@ begin
   new.price := v_price; new.plays := v_plays; new.status := 'pending_payment';
   return new;
 end $$;
-drop trigger if exists bookings_defaults on public.bookings;
-create trigger bookings_defaults before insert or update on public.bookings
+create or replace trigger bookings_defaults before insert or update on public.bookings
   for each row execute function public.booking_defaults();
 
 -- ---------- 4. Calendars count every date of a package ----------
