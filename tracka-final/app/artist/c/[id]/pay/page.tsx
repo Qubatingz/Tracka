@@ -5,7 +5,7 @@ import ArtistTabs from '@/components/ArtistTabs';
 import PayForm from '@/components/PayForm';
 import { getMe, getSettings } from '@/lib/data';
 import { catName, rwf } from '@/lib/util';
-import { niceDay } from '@/lib/calendar';
+import { bookingDates, niceDays } from '@/lib/calendar';
 import { fee } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,8 @@ export default async function Pay({ params }: { params: { id: string } }) {
                 <span>
                   <Icon name={s.category} size={18} />
                   {s.name}
-                  {b.want_date && <small> · {niceDay(b.want_date)}</small>}
+                  {b.plays > 1 && <small> · {b.plays} plays</small>}
+                  {bookingDates(b).length > 0 && <small> · {niceDays(bookingDates(b))}</small>}
                 </span>
                 <span>{rwf(b.price)}</span>
               </li>

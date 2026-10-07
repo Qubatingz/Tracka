@@ -73,3 +73,17 @@ The **secret key** (`sb_secret_…`) and your **database password**. They are ne
 - Promoters you **add in person** (Control room → Promoters) become theirs automatically when they log in with the same phone number.
 - Songs, proofs and IDs are **private files**; pages open them with links that expire after 1 hour.
 - Every money step is written in the `money_events` table, ready for your accounting.
+
+---
+
+## What's new in v0.3
+
+| | |
+|---|---|
+| 📦 **Packages** | Promoters sell several plays for one price (Profile → Packages). Artists pick the package and a date for every play; promoters confirm all dates at once. |
+| 🌱⭐🏆 **Levels & badges** | New → Rising (3+ jobs) → Top Promoter (10+ jobs, 4.5★, 90% on time), plus badges like *Always on time* and *Fast delivery*. Promoters see their progress. |
+| 🗺️ **Where it played** | A map of Rwanda on every campaign showing which promoters already played the song. |
+| 🖼️ **Result card** | A ready-to-post picture of the campaign results (Instagram / WhatsApp status size). |
+| 🔥 **Hot on Tracka** | A weekly chart on the home page of songs that went out. |
+
+Database: run `supabase/patch-02.sql` once (after `patch-01.sql`).

@@ -5,7 +5,9 @@ import Icon from './Icon';
 import { createClient } from '@/lib/supabase/client';
 import { GENRES, isUrl, normalizePhone } from '@/lib/util';
 
-export default function SellerProfileForm({ seller, works, momo }: { seller: any; works: any[]; momo: string }) {
+const PLAYS = [2, 3, 4, 5, 6, 7, 10, 14, 20, 30];
+
+export default function SellerProfileForm({ seller, works, momo, packages = [] }: { seller: any; works: any[]; momo: string; packages?: any[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null);
@@ -23,6 +25,10 @@ export default function SellerProfileForm({ seller, works, momo }: { seller: any
     const m = normalizePhone(v('momo'));
     if (!m) return setMsg({ text: 'Check your MoMo number.', err: true });
     const days = parseInt(v('delivery'), 10);
+    const packs = [0, 1, 2]
+      .map((i) => ({ id: v('pk' + i + 'id'), plays: parseInt(v('pk' + i + 'plays'), 10) || 0, price: parseInt(v('pk' + i + 'price').replace(/[^0-9]/g, ''), 10) || 0, note: v('pk' + i + 'note').slice(0, 80) }))
+      .filter((x) => x.plays >= 2 && x.price > 0);
+    if (new Set(packs.map((x) => x.plays)).size < packs.length) return setMsg({ text: 'Two packages have the same number of plays.', err: true });
     setBusy(true);
     try {
       const supabase = createClient();
@@ -45,6 +51,18 @@ export default function SellerProfileForm({ seller, works, momo }: { seller: any
       if (newWorks.length) {
         const { error: e3 } = await supabase.from('seller_works').insert(newWorks.map((w) => ({ ...w, seller_id: seller.id })));
         if (e3) throw new Error(e3.message);
+      }
+      // Packages: keep the ones that stay (artists may have them in a draft), add new ones, remove the rest.
+      const keep = packs.filter((x) => x.id).map((x) => x.id);
+      const gone = packages.filter((x: any) => !keep.includes(x.id)).map((x: any) => x.id);
+      if (gone.length) {
+        const { error: e4 } = await supabase.from('seller_packages').delete().in('id', gone);
+        if (e4) throw new Error(e4.message);
+      }
+      for (const x of packs) {
+        const row = { seller_id: seller.id, plays: x.plays, price: x.price, note: x.note };
+        const { error: e5 } = x.id ? await supabase.from('seller_packages').update(row).eq('id', x.id) : await supabase.from('seller_packages').insert(row);
+        if (e5) throw new Error(e5.message);
       }
       setMsg({ text: 'Profile saved ✓' });
       router.refresh();
@@ -75,6 +93,42 @@ export default function SellerProfileForm({ seller, works, momo }: { seller: any
         What does the price include?
         <input className="input" name="included" defaultValue={seller.included} placeholder="e.g. 1 play + 5-minute interview" />
       </label>
+      <fieldset className="fset" style={{ padding: 16 }}>
+        <legend>
+          <Icon name="tag" size={18} /> Packages (optional)
+        </legend>
+        <p className="hint" style={{ margin: 0 }}>
+          Sell several plays or posts for one price, e.g. 3 plays for {(seller.price * 3 * 0.85).toLocaleString('en-US', { maximumFractionDigits: 0 })} RWF. The artist picks a date for each play.
+        </p>
+        {[0, 1, 2].map((i) => {
+          const x = packages[i];
+          return (
+            <div className="packrow" key={i}>
+              <input type="hidden" name={`pk${i}id`} defaultValue={x?.id || ''} />
+              <label className="label">
+                Plays
+                <select className="input" name={`pk${i}plays`} defaultValue={x?.plays || ''}>
+                  <option value="">—</option>
+                  {PLAYS.map((n) => (
+                    <option key={n} value={n}>
+                      {n} plays
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="label">
+                Price (RWF)
+                <input className="input" name={`pk${i}price`} inputMode="numeric" defaultValue={x?.price || ''} placeholder="e.g. 25000" />
+              </label>
+              <label className="label grow2">
+                Short note
+                <input className="input" name={`pk${i}note`} maxLength={80} defaultValue={x?.note || ''} placeholder="e.g. 3 plays in prime time" />
+              </label>
+            </div>
+          );
+        })}
+        <p className="hint" style={{ margin: 0 }}>To remove a package, set Plays to “—” and save.</p>
+      </fieldset>
       <label className="label">
         MoMo number for payouts (private)
         <input className="input" name="momo" type="tel" defaultValue={momo} required />

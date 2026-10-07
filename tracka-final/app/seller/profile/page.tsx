@@ -8,9 +8,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function SellerProfile() {
   const { supabase, seller, profile, photo } = await sellerPage();
-  const [{ data: works }, { data: priv }] = await Promise.all([
+  const [{ data: works }, { data: priv }, { data: packs }] = await Promise.all([
     supabase.from('seller_works').select('*').eq('seller_id', seller.id).order('created_at'),
     supabase.from('seller_private').select('momo,id_type,id_number').eq('seller_id', seller.id).maybeSingle(),
+    supabase.from('seller_packages').select('*').eq('seller_id', seller.id).order('plays'),
   ]);
   const missing = [
     !photo && !profile?.avatar ? 'photo or avatar' : '',
@@ -33,7 +34,7 @@ export default async function SellerProfile() {
           <span style={{ width: pct + '%' }} />
         </div>
       </div>
-      <SellerProfileForm seller={seller} works={works || []} momo={priv?.momo || ''} />
+      <SellerProfileForm seller={seller} works={works || []} momo={priv?.momo || ''} packages={packs || []} />
       <h2 className="st">Picture and notifications</h2>
       <ProfileSettingsForm profile={profile} photoUrl={photo} back="/seller/profile" hideName />
       {priv?.id_number && (

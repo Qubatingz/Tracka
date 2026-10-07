@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Avatar from './Avatar';
 import Icon from './Icon';
+import LevelBadge from './LevelBadge';
 import { catName, rwf, platformOf, isTrusted, type Stats } from '@/lib/util';
 
 export default function SellerCard({ s, st, photo }: { s: any; st?: Stats; photo?: string | null }) {
@@ -12,6 +13,7 @@ export default function SellerCard({ s, st, photo }: { s: any; st?: Stats; photo
         <Avatar name={s.name} photo={photo} category={s.category} size={54} />
         <div className="grow">
           <h3>{s.name}</h3>
+          {st && <LevelBadge st={st} />}{' '}
           {isTrusted(st, s.id_checked) && (
             <span className="trustbadge">
               <Icon name="shield" size={14} />

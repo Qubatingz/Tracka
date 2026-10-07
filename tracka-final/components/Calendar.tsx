@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { MON, WDN, pad2, todayS, dayState, niceDay, type SellerCal } from '@/lib/calendar';
 
 // Month calendar. pick = artists choose a free day. manage = sellers open/close days.
-export default function Calendar({ cal, selected, onPick, manage, onToggle, bookedLabel }: { cal: SellerCal; selected?: string; onPick?: (ds: string) => void; manage?: boolean; onToggle?: (ds: string) => void; bookedLabel?: boolean }) {
+export default function Calendar({ cal, selected, selectedMany, onPick, manage, onToggle, bookedLabel }: { cal: SellerCal; selected?: string; selectedMany?: string[]; onPick?: (ds: string) => void; manage?: boolean; onToggle?: (ds: string) => void; bookedLabel?: boolean }) {
   const nowM = todayS().slice(0, 7);
-  const [base, setBase] = useState(selected ? selected.slice(0, 7) : nowM);
+  const first = selected || (selectedMany || [])[0] || '';
+  const [base, setBase] = useState(first && first.slice(0, 7) >= nowM ? first.slice(0, 7) : nowM);
+  const isSel = (ds: string) => selected === ds || !!selectedMany?.includes(ds);
   const y = +base.slice(0, 4);
   const m = +base.slice(5, 7) - 1;
   const lead = (new Date(y, m, 1).getDay() + 6) % 7;
@@ -21,11 +23,11 @@ export default function Calendar({ cal, selected, onPick, manage, onToggle, book
     const st = dayState(cal, ds);
     const booked = cal.booked?.[ds] || 0;
     const label = `${niceDay(ds)}: ${{ free: 'free', full: 'fully booked', off: 'not working', past: 'past' }[st]}${booked && bookedLabel ? `, ${booked} booked` : ''}`;
-    const cls = `cd ${st}${selected === ds ? ' sel' : ''}${ds === todayS() ? ' today' : ''}${booked && bookedLabel ? ' hasb' : ''}`;
-    const clickable = manage ? st !== 'past' : !!onPick && st === 'free';
+    const cls = `cd ${st}${isSel(ds) ? ' sel' : ''}${ds === todayS() ? ' today' : ''}${booked && bookedLabel ? ' hasb' : ''}`;
+    const clickable = manage ? st !== 'past' : !!onPick && (st === 'free' || isSel(ds));
     cells.push(
       clickable ? (
-        <button key={ds} type="button" className={cls} aria-label={label} aria-pressed={selected === ds} onClick={() => (manage ? onToggle?.(ds) : onPick?.(ds))}>
+        <button key={ds} type="button" className={cls} aria-label={label} aria-pressed={isSel(ds)} onClick={() => (manage ? onToggle?.(ds) : onPick?.(ds))}>
           {dd}
         </button>
       ) : (

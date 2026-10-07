@@ -7,11 +7,12 @@ import RpcForm from '@/components/RpcForm';
 import ProofForm from '@/components/ProofForm';
 import ReplyForm from '@/components/ReplyForm';
 import ProofView from '@/components/ProofView';
+import ScheduleDates from '@/components/ScheduleDates';
 import { BookingJourney } from '@/components/Journey';
 import { sellerPage } from '@/lib/seller';
 import { signedMap } from '@/lib/media';
 import { rwf } from '@/lib/util';
-import { niceDay, todayS } from '@/lib/calendar';
+import { bookingDates, niceDay, niceDays, todayS } from '@/lib/calendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,7 +108,8 @@ export default async function SellerHome() {
                 <strong className="btitle">{c.title}</strong>
                 <small className="muted">
                   {artistName(c.artist_id)} · {c.genre || 'Single'}
-                  {b.run_date ? ` · On ${niceDay(b.run_date)}` : b.want_date ? ` · Artist wants ${niceDay(b.want_date)}` : ''}
+                  {b.plays > 1 ? ` · Package: ${b.plays} plays` : ''}
+                  {(b.run_dates || []).length || b.run_date ? ` · On ${niceDays(bookingDates(b))}` : bookingDates(b).length ? ` · Artist wants ${niceDays(bookingDates(b))}` : ''}
                   {b.due_date ? ` · Due ${niceDay(b.due_date)}` : ''}
                 </small>
               </div>
@@ -135,7 +137,8 @@ export default async function SellerHome() {
                 </div>
               </div>
             )}
-            {b.status === 'booked' && acc && (
+            {b.status === 'booked' && acc && b.plays > 1 && <ScheduleDates bookingId={b.id} plays={b.plays} wanted={bookingDates(b)} />}
+            {b.status === 'booked' && acc && !(b.plays > 1) && (
               <div style={{ marginTop: 14 }}>
                 <RpcForm fn="schedule_booking" args={{ p_booking: b.id }} inline fields={[{ name: 'p_date', label: 'When will it run?', type: 'date', required: true, min: today, defaultValue: b.want_date && b.want_date >= today ? b.want_date : '' }]} submit="Schedule" />
               </div>

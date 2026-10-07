@@ -43,3 +43,15 @@ export function buildCals(sellers: any[], daysOff: any[], booked: any[]): Record
   for (const b of booked || []) if (out[b.seller_id]) out[b.seller_id].booked[b.day] = Number(b.n) || 0;
   return out;
 }
+
+// Every date of a booking: the promoter's dates once set, otherwise the artist's wish.
+export function bookingDates(b: any): string[] {
+  const run = (b?.run_dates || []).filter(Boolean);
+  if (run.length) return run;
+  const want = (b?.want_dates || []).filter(Boolean);
+  if (want.length) return want;
+  const one = b?.run_date || b?.want_date;
+  return one ? [one] : [];
+}
+
+export const niceDays = (ds: string[]) => ds.map(niceDay).join(', ');

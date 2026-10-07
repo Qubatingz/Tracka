@@ -49,7 +49,7 @@ export default async function AdminProofs() {
         <div className="subfacts">
           <span>
             <Icon name="calendar" size={14} />
-            {b.run_date ? `Ran ${niceDay(b.run_date)}` : `Due ${niceDay(b.due_date)}`}
+            {b.run_date ? `Ran ${niceDay(b.run_date)}${b.plays > 1 ? ` + ${b.plays - 1} more plays` : ''}` : `Due ${niceDay(b.due_date)}`}
           </span>
           {b.proof_at && (
             <span>

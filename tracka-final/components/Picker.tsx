@@ -6,13 +6,14 @@ import Icon from './Icon';
 import Avatar from './Avatar';
 import Calendar from './Calendar';
 import WeekStrip from './WeekStrip';
+import LevelBadge from './LevelBadge';
 import { createClient } from '@/lib/supabase/client';
 import { CH, GENRES, catName, rwf } from '@/lib/util';
-import { dayState, nextFree, niceDay, todayS, type SellerCal } from '@/lib/calendar';
+import { bookingDates, dayState, nextFree, niceDay, niceDays, todayS, type SellerCal } from '@/lib/calendar';
 
-type Props = { campaignId: string; bookings: any[]; sellers: any[]; stats: any[]; pics: Record<string, any>; cals: Record<string, SellerCal>; fee: number };
+type Props = { campaignId: string; bookings: any[]; sellers: any[]; stats: any[]; packages?: any[]; pics: Record<string, any>; cals: Record<string, SellerCal>; fee: number };
 
-export default function Picker({ campaignId, bookings, sellers, stats, pics, cals, fee }: Props) {
+export default function Picker({ campaignId, bookings, sellers, stats, packages = [], pics, cals, fee }: Props) {
   const router = useRouter();
   const [ch, setCh] = useState('all');
   const [q, setQ] = useState('');
@@ -21,12 +22,21 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
   const [freeOn, setFreeOn] = useState('');
   const [sort, setSort] = useState('price');
   const [open, setOpen] = useState<string | null>(null);
-  const [date, setDate] = useState('');
+  const [pkg, setPkg] = useState(''); // '' = one play at the normal price
+  const [dates, setDates] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const booked: Record<string, any> = {};
   for (const b of bookings) booked[b.seller_id] = b;
   const statOf = (id: string) => stats.find((s: any) => s.seller_id === id);
+  const packsOf = (id: string) => packages.filter((x: any) => x.seller_id === id).sort((a: any, b: any) => a.plays - b.plays);
+  const openSeller = (id: string) => {
+    const bk = booked[id];
+    setOpen(id);
+    setPkg(bk?.package_id || '');
+    setDates(bk ? (bk.want_dates?.length ? bk.want_dates : bk.want_date ? [bk.want_date] : []) : []);
+    setErr('');
+  };
   const chips = Object.keys(CH).filter((k) => sellers.some((s) => s.category === k));
 
   const list = useMemo(() => {
@@ -55,8 +65,11 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
     router.refresh();
   }
   const supabase = createClient();
-  const add = (sid: string, want: string | null) =>
-    run(() => (booked[sid] ? supabase.from('bookings').update({ want_date: want }).eq('id', booked[sid].id) : supabase.from('bookings').insert({ campaign_id: campaignId, seller_id: sid, want_date: want })));
+  // The database copies the real price and number of plays from the promoter.
+  const add = (sid: string, packageId: string | null, want: string[]) => {
+    const row = { package_id: packageId || null, want_dates: [...want].sort(), want_date: [...want].sort()[0] || null };
+    return run(() => (booked[sid] ? supabase.from('bookings').update(row).eq('id', booked[sid].id) : supabase.from('bookings').insert({ campaign_id: campaignId, seller_id: sid, ...row })));
+  };
   const remove = (sid: string) => run(() => supabase.from('bookings').delete().eq('id', booked[sid].id));
   const delDraft = () => {
     if (!window.confirm('Delete this draft?')) return;
@@ -70,7 +83,24 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
   const total = bookings.reduce((t, b) => t + b.price, 0);
   const totalFee = Math.round((total * fee) / 100);
   const s = open ? sellers.find((x) => x.id === open) : null;
-  const chosen = date || (s && booked[s.id]?.want_date) || '';
+  const sPacks = s ? packsOf(s.id) : [];
+  const pick = sPacks.find((x: any) => x.id === pkg);
+  const need = pick ? pick.plays : 1;
+  const shown = dates.slice(0, need);
+  const toggleDay = (ds: string) =>
+    setDates((cur) => {
+      const now = cur.slice(0, need);
+      if (now.includes(ds)) return now.filter((d) => d !== ds);
+      if (need === 1) return [ds];
+      return now.length < need ? [...now, ds].sort() : [...now.slice(0, need - 1), ds].sort();
+    });
+  const choosePkg = (id: string) => {
+    setPkg(id);
+    const n = id ? sPacks.find((x: any) => x.id === id)?.plays || 1 : 1;
+    setDates((cur) => cur.slice(0, n));
+  };
+  const left = need - shown.length;
+  const mainLabel = shown.length === 0 ? '' : left > 0 ? `${booked[s?.id || ''] ? 'Save' : 'Add'} with ${shown.length} of ${need} dates` : `${booked[s?.id || ''] ? 'Save' : 'Add'} · ${need === 1 ? niceDay(shown[0]) : `${need} dates`}`;
 
   return (
     <>
@@ -148,7 +178,7 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
             const nf = nextFree(cals[p.id]);
             return (
               <div key={p.id} className={'pickcard' + (bk ? ' on' : '')}>
-                <button type="button" className="pchead" onClick={() => { setOpen(p.id); setDate(''); }} aria-label={`See ${p.name} and pick a date`}>
+                <button type="button" className="pchead" onClick={() => openSeller(p.id)} aria-label={`See ${p.name} and pick dates`}>
                   <Avatar name={p.name} photo={pics[p.id]?.photo} avatar={pics[p.id]?.avatar} useAvatar={pics[p.id]?.useAvatar} category={p.category} size={52} />
                   <span className="grow">
                     <strong>{p.name}</strong>
@@ -157,10 +187,16 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
                       {p.location ? ' · ' + p.location : ''}
                     </small>
                   </span>
-                  <span className="price">{rwf(p.price)}</span>
+                  <span className="price">{rwf(bk ? bk.price : p.price)}</span>
                 </button>
                 {p.included && <p className="pinc">{p.included}</p>}
                 <div className="pcmeta">
+                  <LevelBadge st={st} />
+                  {packsOf(p.id).length > 0 && (
+                    <span className="hint">
+                      <Icon name="tag" size={14} /> Packages from {rwf(packsOf(p.id)[0].price)}
+                    </span>
+                  )}
                   {st?.avg_rating ? <span className="starsdisp">{'★'.repeat(Math.round(st.avg_rating))}</span> : <span className="hint">New</span>}
                   {p.delivery_days && (
                     <span className="hint">
@@ -174,21 +210,22 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
                   {bk ? (
                     <span className="datechip">
                       <Icon name="clock" size={14} />
-                      {bk.want_date ? niceDay(bk.want_date) : 'Date: later'}
+                      {bk.plays > 1 ? `${bk.plays} plays · ` : ''}
+                      {bookingDates(bk).length ? niceDays(bookingDates(bk)) : bk.plays > 1 ? 'dates later' : 'Date: later'}
                     </span>
                   ) : (
                     <span className="hint">Next free: {nf ? niceDay(nf) : '—'}</span>
                   )}
                   <span className="row" style={{ gap: 8 }}>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setOpen(p.id); setDate(''); }}>
-                      {bk ? 'Change date' : 'Pick date'}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => openSeller(p.id)}>
+                      {bk ? 'Change' : packsOf(p.id).length ? 'Pick dates' : 'Pick date'}
                     </button>
                     {bk ? (
                       <button type="button" className="btn btn-dark btn-sm" aria-pressed="true" disabled={busy} onClick={() => remove(p.id)}>
                         <Icon name="check" size={16} /> Added
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-yellow btn-sm" aria-pressed="false" disabled={busy} onClick={() => add(p.id, null)}>
+                      <button type="button" className="btn btn-yellow btn-sm" aria-pressed="false" disabled={busy} onClick={() => add(p.id, null, [])}>
                         Add
                       </button>
                     )}
@@ -236,9 +273,12 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
                   {catName(s)}
                   {s.location ? ' · ' + s.location : ''}
                 </small>
-                <span className="badge">
-                  <Icon name="shield" size={16} />
-                  Verified
+                <span className="row" style={{ gap: 8, marginTop: 4 }}>
+                  <span className="badge">
+                    <Icon name="shield" size={16} />
+                    Verified
+                  </span>
+                  <LevelBadge st={statOf(s.id)} />
                 </span>
               </div>
             </div>
@@ -262,17 +302,53 @@ export default function Picker({ campaignId, bookings, sellers, stats, pics, cal
                 <span>{s.included}</span>
               </p>
             )}
-            <h3 className="dh">Pick a date</h3>
-            <Calendar cal={cals[s.id]} selected={chosen} onPick={setDate} />
+            {sPacks.length > 0 && (
+              <>
+                <h3 className="dh">How many plays?</h3>
+                <div className="packs" role="radiogroup" aria-label="How many plays">
+                  <button type="button" role="radio" aria-checked={!pkg} className="pack" onClick={() => choosePkg('')}>
+                    <b>1 play</b>
+                    <span>{rwf(s.price)}</span>
+                  </button>
+                  {sPacks.map((x: any) => (
+                    <button key={x.id} type="button" role="radio" aria-checked={pkg === x.id} className="pack" onClick={() => choosePkg(x.id)}>
+                      <b>{x.plays} plays</b>
+                      <span>{rwf(x.price)}</span>
+                      {x.note && <small>{x.note}</small>}
+                      {x.price < s.price * x.plays && <em>Save {rwf(s.price * x.plays - x.price)}</em>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <h3 className="dh">{need === 1 ? 'Pick a date' : `Pick ${need} dates`}</h3>
+            {need > 1 && <p className="hint" style={{ margin: '-4px 0 10px' }}>Tap free days. Tap again to remove one.</p>}
+            <Calendar cal={cals[s.id]} selectedMany={shown} onPick={toggleDay} />
+            {need > 1 && (
+              <div className="datepills" aria-live="polite">
+                {Array.from({ length: need }).map((_, i) =>
+                  shown[i] ? (
+                    <button key={i} type="button" className="datepill on" onClick={() => toggleDay(shown[i])} aria-label={`Remove ${niceDay(shown[i])}`}>
+                      {niceDay(shown[i])} ×
+                    </button>
+                  ) : (
+                    <span key={i} className="datepill">
+                      Date {i + 1}
+                    </span>
+                  )
+                )}
+              </div>
+            )}
             <div className="dfoot">
-              <button type="button" className="btn btn-yellow" disabled={!chosen || busy} onClick={() => add(s.id, chosen)}>
-                {chosen ? `${booked[s.id] ? 'Change to' : 'Add for'} ${niceDay(chosen)}` : 'Pick a free day'}
+              <button type="button" className="btn btn-yellow" disabled={!shown.length || busy} onClick={() => add(s.id, pkg || null, shown)}>
+                {mainLabel || (need === 1 ? 'Pick a free day' : `Pick ${need} free days`)}
               </button>
-              {!booked[s.id] && (
-                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => add(s.id, null)}>
-                  Add, choose date later
+              {!shown.length && (
+                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => add(s.id, pkg || null, [])}>
+                  {booked[s.id] ? 'Save, choose dates later' : need === 1 ? 'Add, choose date later' : 'Add, choose dates later'}
                 </button>
               )}
+              {left > 0 && shown.length > 0 && <small className="hint">The promoter will confirm the {left === 1 ? 'last date' : `last ${left} dates`}.</small>}
               <Link href={`/p/${s.id}`} className="morelink" target="_blank">
                 Full profile <Icon name="arrow" size={16} />
               </Link>

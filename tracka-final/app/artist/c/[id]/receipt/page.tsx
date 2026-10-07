@@ -4,7 +4,7 @@ import Icon from '@/components/Icon';
 import ArtistTabs from '@/components/ArtistTabs';
 import { getMe, getSettings } from '@/lib/data';
 import { catName, rwf } from '@/lib/util';
-import { niceDay } from '@/lib/calendar';
+import { bookingDates, niceDays } from '@/lib/calendar';
 import { fee } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +83,8 @@ export default async function Receipt({ params }: { params: { id: string } }) {
                     {s.name}
                     <small>
                       {catName(s)}
-                      {b.run_date ? ' · ' + niceDay(b.run_date) : ''}
+                      {b.plays > 1 ? ` · ${b.plays} plays` : ''}
+                      {(b.run_dates || []).length || b.run_date ? ' · ' + niceDays(bookingDates(b)) : ''}
                     </small>
                   </td>
                   <td>{refunded ? 'Refunded' : b.status === 'approved' || b.status === 'paid_out' ? 'Delivered ✓' : 'In progress'}</td>

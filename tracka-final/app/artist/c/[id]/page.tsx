@@ -34,10 +34,10 @@ export default async function CampaignPage({ params }: { params: { id: string } 
               “{c.title}”
             </p>
             <h1>Pick your promoters.</h1>
-            <p className="sub">Tap a promoter to see their calendar and pick a date.</p>
+            <p className="sub">Tap a promoter to see their calendar, packages and dates.</p>
           </div>
         </div>
-        <Picker campaignId={c.id} bookings={bks || []} sellers={m.sellers} stats={m.stats} pics={m.pics} cals={m.cals} fee={m.fee} />
+        <Picker campaignId={c.id} bookings={bks || []} sellers={m.sellers} stats={m.stats} packages={m.packages} pics={m.pics} cals={m.cals} fee={m.fee} />
       </div>
     );
   }

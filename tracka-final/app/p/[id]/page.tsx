@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Icon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
+import LevelBadge, { Badges } from '@/components/LevelBadge';
 import { createClient } from '@/lib/supabase/server';
 import { faceUrl } from '@/lib/data';
 import { catName, rwf, platformOf, isTrusted, niceDate, type Stats } from '@/lib/util';
+import { LEVELS, levelOf } from '@/lib/levels';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +14,12 @@ export default async function SellerProfile({ params }: { params: { id: string }
   const supabase = createClient();
   const { data: s } = await supabase.from('sellers').select('*').eq('id', params.id).maybeSingle();
   if (!s) notFound();
-  const [{ data: st }, { data: works }, { data: reviews }, { data: face }] = await Promise.all([
+  const [{ data: st }, { data: works }, { data: reviews }, { data: face }, { data: packs }] = await Promise.all([
     supabase.from('seller_stats').select('*').eq('seller_id', s.id).maybeSingle(),
     supabase.from('seller_works').select('*').eq('seller_id', s.id).order('created_at'),
     supabase.from('seller_reviews').select('*').eq('seller_id', s.id).order('rated_at', { ascending: false }),
     s.profile_id ? supabase.from('public_profiles').select('photo_path').eq('id', s.profile_id).maybeSingle() : Promise.resolve({ data: null as any }),
+    supabase.from('seller_packages').select('*').eq('seller_id', s.id).order('plays'),
   ]);
   const stats = st as Stats | null;
   const trusted = isTrusted(stats || undefined, s.id_checked);
@@ -59,6 +62,10 @@ export default async function SellerProfile({ params }: { params: { id: string }
                 Trusted
               </span>
             )}
+            <LevelBadge st={stats} big />
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <Badges s={s} st={stats} hasPackages={(packs || []).length > 0} />
           </div>
         </div>
         {s.status === 'verified' && (
@@ -94,6 +101,32 @@ export default async function SellerProfile({ params }: { params: { id: string }
               <small>What you get</small>
               <p style={{ fontSize: 22, margin: '4px 0 0' }}>{s.included}</p>
             </div>
+          )}
+          {(packs || []).length > 0 && (
+            <>
+              <h2 className="st">Packages</h2>
+              <div className="pkglist">
+                <div className="pkgline">
+                  <div className="grow">
+                    <b>1 play</b>
+                    <small>{s.included || 'One play or post'}</small>
+                  </div>
+                  <span className="price">{rwf(s.price)}</span>
+                </div>
+                {packs!.map((x: any) => (
+                  <div className="pkgline" key={x.id}>
+                    <div className="grow">
+                      <b>{x.plays} plays</b>
+                      <small>
+                        {x.note || `${x.plays} dates you choose`}
+                        {x.price < s.price * x.plays ? ` · save ${rwf(s.price * x.plays - x.price)}` : ''}
+                      </small>
+                    </div>
+                    <span className="price">{rwf(x.price)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
           {s.description && (
             <>
@@ -185,6 +218,15 @@ export default async function SellerProfile({ params }: { params: { id: string }
               {ck((stats?.lost_problems ?? 0) === 0, stats?.lost_problems ? `${stats.lost_problems} problem(s) refunded` : 'No refunded problems')}
             </ul>
             {!trusted && <p className="hint">Trusted = ID checked, 3+ jobs, 90% on time, 4.5★ or more, no refunded problems.</p>}
+          </div>
+          <div className="side">
+            <small>Levels</small>
+            {(['new', 'rising', 'top'] as const).map((k) => (
+              <p key={k} style={{ margin: '8px 0 0', fontWeight: levelOf(stats) === k ? 700 : 400 }}>
+                {LEVELS[k].emoji} {LEVELS[k].name}
+                <span className="hint"> · {LEVELS[k].text}</span>
+              </p>
+            ))}
           </div>
           {(s.genres || []).length > 0 && (
             <div className="side">

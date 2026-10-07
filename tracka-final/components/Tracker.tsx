@@ -9,12 +9,14 @@ import RpcForm from './RpcForm';
 import RateForm from './RateForm';
 import TipForm from './TipForm';
 import NewVersionForm from './NewVersionForm';
+import RwandaMap from './RwandaMap';
+import ResultCard from './ResultCard';
 import { CampaignJourney } from './Journey';
 import { createClient } from '@/lib/supabase/server';
 import { getSettings } from '@/lib/data';
 import { signedMap } from '@/lib/media';
 import { catName, rwf } from '@/lib/util';
-import { niceDay } from '@/lib/calendar';
+import { bookingDates, niceDays } from '@/lib/calendar';
 import { fee } from '@/lib/labels';
 
 const when = (t?: string | null) => (t ? new Date(t).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
@@ -25,10 +27,11 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
   const settings = await getSettings(supabase);
   const sids = Array.from(new Set(bookings.map((b) => b.seller_id)));
   const bids = bookings.map((b) => b.id);
-  const [{ data: sellers }, { data: proofs }, { data: tips }] = await Promise.all([
+  const [{ data: sellers }, { data: proofs }, { data: tips }, { data: me }] = await Promise.all([
     sids.length ? supabase.from('sellers').select('id,name,category,custom_category,location,profile_id') .in('id', sids) : Promise.resolve({ data: [] as any[] }),
     bids.length ? supabase.from('proofs').select('*').in('booking_id', bids).order('created_at') : Promise.resolve({ data: [] as any[] }),
     bids.length ? supabase.from('tips').select('*').in('booking_id', bids) : Promise.resolve({ data: [] as any[] }),
+    supabase.from('public_profiles').select('display_name').eq('id', c.artist_id).maybeSingle(),
   ]);
   const media = await signedMap(supabase, 'proofs', (proofs || []).flatMap((p: any) => [p.image_path, p.video_path]));
   const song = c.song_path ? (await supabase.storage.from('songs').createSignedUrl(c.song_path, 3600)).data?.signedUrl : null;
@@ -82,7 +85,13 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
             ['paid', 'You paid', `${rwf(b.price)} held safely`, c.paid_at, true],
             ['review', 'Tracka approved your song', '', c.reviewed_at, !!c.reviewed_at],
             ['accepted', `${pn} accepted`, '', b.accepted_at, !!b.accepted_at || AFTER(b, ['scheduled', 'live', 'proof_submitted', 'disputed', 'approved', 'paid_out'])],
-            ['scheduled', 'Date set', b.run_date ? `Runs ${niceDay(b.run_date)}` : b.want_date ? `You asked for ${niceDay(b.want_date)}` : '', b.scheduled_at, !!b.run_date || AFTER(b, ['live', 'proof_submitted', 'disputed', 'approved', 'paid_out'])],
+            [
+              'scheduled',
+              b.plays > 1 ? 'Dates set' : 'Date set',
+              (b.run_dates || []).length || b.run_date ? `Runs ${niceDays(bookingDates(b))}` : bookingDates(b).length ? `You asked for ${niceDays(bookingDates(b))}` : '',
+              b.scheduled_at,
+              !!b.run_date || AFTER(b, ['live', 'proof_submitted', 'disputed', 'approved', 'paid_out']),
+            ],
             ['live', "It's out!", '', b.live_at, AFTER(b, ['live', 'proof_submitted', 'disputed', 'approved', 'paid_out'])],
             ['proof', 'Result arrived', 'Screenshot or video', b.proof_at, AFTER(b, ['proof_submitted', 'disputed', 'approved', 'paid_out'])],
             ['done', 'Done', b.status === 'paid_out' ? `${pn} was paid` : 'Approved · payment going out', b.paid_out_at || b.approved_at, AFTER(b, ['approved', 'paid_out'])],
@@ -100,6 +109,7 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
                   <small>
                     {catName(p)}
                     {p.location ? ' · ' + p.location : ''}
+                    {b.plays > 1 ? ` · package of ${b.plays} plays` : ''}
                   </small>
                 </div>
                 <span className="price">{rwf(b.price)}</span>
@@ -226,6 +236,27 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
         </span>
       </div>
       {body}
+      {(c.status === 'active' || c.status === 'completed') && (
+        <>
+          <RwandaMap
+            items={bookings.map((b) => {
+              const p: any = sellerOf(b.seller_id);
+              const st: 'done' | 'coming' | 'off' = b.status === 'declined' || b.status === 'refunded' ? 'off' : AFTER(b, ['live', 'proof_submitted', 'disputed', 'approved', 'paid_out']) ? 'done' : 'coming';
+              return { id: b.id, name: p.name, category: p.category, location: p.location, state: st };
+            })}
+          />
+          <ResultCard
+            title={c.title}
+            artist={me?.display_name || 'An artist'}
+            items={bookings
+              .filter((b) => b.status !== 'declined' && b.status !== 'refunded')
+              .map((b) => {
+                const p: any = sellerOf(b.seller_id);
+                return { name: p.name, category: p.category, location: p.location, plays: b.plays || 1, done: AFTER(b, ['proof_submitted', 'approved', 'paid_out']) };
+              })}
+          />
+        </>
+      )}
       <div className="money" style={{ marginTop: 24 }}>
         <div>
           <small>Paid</small>

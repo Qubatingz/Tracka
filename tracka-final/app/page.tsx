@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import SellerCard from '@/components/SellerCard';
 import MusicButton from '@/components/MusicButton';
+import HotList from '@/components/HotList';
 import { createClient } from '@/lib/supabase/server';
 import { getSettings, faceUrl } from '@/lib/data';
 import { RING, CH, rwf } from '@/lib/util';
@@ -26,6 +27,8 @@ export default async function Home() {
   const ids = list.map((s: any) => s.profile_id).filter(Boolean);
   const { data: faces } = ids.length ? await supabase.from('public_profiles').select('id,photo_path').in('id', ids) : { data: [] as any[] };
   const photoOf = (pid: string) => faceUrl(supabase, (faces || []).find((f: any) => f.id === pid)?.photo_path);
+  const { data: hotRows } = await supabase.rpc('trending_songs', { p_days: 7, p_limit: 5 });
+  const hot = (hotRows || []).map((h: any) => ({ ...h, photo: faceUrl(supabase, h.photo_path) }));
   const minPrice = list.length ? list[0].price : 0;
   const fee = Number(settings.fee_percent) || 0;
   const step = 360 / CHANS.length;
@@ -131,6 +134,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <HotList songs={hot} />
 
       <section className="band">
         <div className="band-in">
