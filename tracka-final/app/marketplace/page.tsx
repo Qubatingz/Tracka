@@ -18,7 +18,7 @@ export default async function Marketplace({ searchParams }: { searchParams: { ca
   const open = (cats || []).filter((c: any) => c.is_open || (c.key === 'other' && settings?.allow_custom)).map((c: any) => c.key);
   const { data: rows } = await supabase
     .from('sellers')
-    .select('id,name,category,custom_category,price,included,delivery_days,location,genres,pages,id_checked,profile_id')
+    .select('id,name,category,custom_category,price,included,delivery_days,location,genres,pages,id_checked,profile_id,is_example')
     .eq('status', 'verified')
     .in('category', open.length ? open : ['none'])
     .order('price');

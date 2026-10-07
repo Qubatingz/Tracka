@@ -11,7 +11,7 @@ export async function loadMarket(supabase: ReturnType<typeof createClient>) {
   const open = (cats || []).filter((c: any) => c.is_open || (c.key === 'other' && settings?.allow_custom)).map((c: any) => c.key);
   const { data: rows } = await supabase
     .from('sellers')
-    .select('id,name,category,custom_category,price,included,delivery_days,location,genres,pages,id_checked,profile_id,cal_days,cal_capacity')
+    .select('id,name,category,custom_category,price,included,delivery_days,location,genres,pages,id_checked,profile_id,cal_days,cal_capacity,is_example')
     .eq('status', 'verified')
     .in('category', open.length ? open : ['none'])
     .order('price');

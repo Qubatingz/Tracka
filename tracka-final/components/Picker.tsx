@@ -182,6 +182,7 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
                   <Avatar name={p.name} photo={pics[p.id]?.photo} avatar={pics[p.id]?.avatar} useAvatar={pics[p.id]?.useAvatar} category={p.category} size={52} />
                   <span className="grow">
                     <strong>{p.name}</strong>
+                    {p.is_example && <span className="extag">Example</span>}
                     <small>
                       {catName(p)}
                       {p.location ? ' · ' + p.location : ''}
@@ -224,6 +225,10 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
                       <button type="button" className="btn btn-dark btn-sm" aria-pressed="true" disabled={busy} onClick={() => remove(p.id)}>
                         <Icon name="check" size={16} /> Added
                       </button>
+                    ) : p.is_example ? (
+                      <span className="btn btn-ghost btn-sm" aria-disabled="true" title="Example promoters can't be booked" style={{ opacity: 0.6 }}>
+                        Example
+                      </span>
                     ) : (
                       <button type="button" className="btn btn-yellow btn-sm" aria-pressed="false" disabled={busy} onClick={() => add(p.id, null, [])}>
                         Add
@@ -339,11 +344,12 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
                 )}
               </div>
             )}
+            {s.is_example && <p className="exnote">Example promoter, just for show. Look around, but pick a real one to book.</p>}
             <div className="dfoot">
-              <button type="button" className="btn btn-yellow" disabled={!shown.length || busy} onClick={() => add(s.id, pkg || null, shown)}>
+              <button type="button" className="btn btn-yellow" disabled={!shown.length || busy || s.is_example} onClick={() => add(s.id, pkg || null, shown)}>
                 {mainLabel || (need === 1 ? 'Pick a free day' : `Pick ${need} free days`)}
               </button>
-              {!shown.length && (
+              {!shown.length && !s.is_example && (
                 <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => add(s.id, pkg || null, [])}>
                   {booked[s.id] ? 'Save, choose dates later' : need === 1 ? 'Add, choose date later' : 'Add, choose dates later'}
                 </button>

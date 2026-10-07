@@ -1035,3 +1035,6 @@ small.progline{margin-top:4px}
 .rcard{margin-top:22px;padding:20px;border-radius:24px;background:linear-gradient(135deg,var(--mustard-l),var(--paper));border:1px solid #E2C27A}
 .rcard h2{margin:0 0 4px}
 .rcard .rprev{display:block;width:min(100%,360px);height:auto;margin:14px 0;border-radius:18px;box-shadow:0 14px 36px rgba(20,40,31,.22)}
+
+.extag{display:inline-flex;align-items:center;padding:1px 8px;margin-left:6px;border-radius:999px;border:1px dashed var(--ink-2);color:var(--ink-2);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle;white-space:nowrap}
+.exnote{margin:8px 0 0;padding:8px 12px;border-radius:12px;background:var(--sand);color:var(--ink-2);font-size:14px}

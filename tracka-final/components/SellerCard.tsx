@@ -13,6 +13,7 @@ export default function SellerCard({ s, st, photo }: { s: any; st?: Stats; photo
         <Avatar name={s.name} photo={photo} category={s.category} size={54} />
         <div className="grow">
           <h3>{s.name}</h3>
+          {s.is_example && <span className="extag">Example</span>}{' '}
           {st && <LevelBadge st={st} />}{' '}
           {isTrusted(st, s.id_checked) && (
             <span className="trustbadge">
