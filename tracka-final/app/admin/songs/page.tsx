@@ -19,7 +19,7 @@ export default async function AdminSongs() {
   const cids = list.map((c: any) => c.id);
   const [{ data: artists }, { data: bks }] = await Promise.all([
     aids.length ? supabase.from('public_profiles').select('id,display_name').in('id', aids) : Promise.resolve({ data: [] as any[] }),
-    cids.length ? supabase.from('bookings').select('campaign_id,price').in('campaign_id', cids) : Promise.resolve({ data: [] as any[] }),
+    cids.length ? supabase.from('bookings').select('campaign_id,price,seller_id,sellers(is_example)').in('campaign_id', cids) : Promise.resolve({ data: [] as any[] }),
   ]);
   const songs = await signedMap(supabase, 'songs', list.map((c: any) => c.song_path));
   return (
@@ -52,6 +52,7 @@ export default async function AdminSongs() {
               )}
               <p className="hint" style={{ margin: 0 }}>
                 Goes to {cb.length} {cb.length === 1 ? 'promoter' : 'promoters'}.
+                {cb.some((b: any) => b.sellers?.is_example) ? ' 🧪 Practice campaign (example promoters).' : ''}
               </p>
               <ul className="vcheck" style={{ columns: 1 }}>
                 <li>Sound is clear, not broken</li>

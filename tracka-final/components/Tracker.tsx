@@ -28,7 +28,7 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
   const sids = Array.from(new Set(bookings.map((b) => b.seller_id)));
   const bids = bookings.map((b) => b.id);
   const [{ data: sellers }, { data: proofs }, { data: tips }, { data: me }] = await Promise.all([
-    sids.length ? supabase.from('sellers').select('id,name,category,custom_category,location,profile_id') .in('id', sids) : Promise.resolve({ data: [] as any[] }),
+    sids.length ? supabase.from('sellers').select('id,name,category,custom_category,location,profile_id,is_example').in('id', sids) : Promise.resolve({ data: [] as any[] }),
     bids.length ? supabase.from('proofs').select('*').in('booking_id', bids).order('created_at') : Promise.resolve({ data: [] as any[] }),
     bids.length ? supabase.from('tips').select('*').in('booking_id', bids) : Promise.resolve({ data: [] as any[] }),
     supabase.from('public_profiles').select('display_name').eq('id', c.artist_id).maybeSingle(),
@@ -46,6 +46,7 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
   const released = bookings.filter((b) => b.status === 'paid_out').reduce((t, b) => t + b.price, 0);
   const back = bookings.filter((b) => b.status === 'declined' || b.status === 'refunded').reduce((t, b) => t + b.price, 0);
   const no = 'TR-' + String(c.id).slice(0, 6).toUpperCase();
+  const practice = (sellers || []).some((s: any) => s.is_example);
 
   let body: React.ReactNode;
   if (c.status === 'payment_submitted') {
@@ -162,7 +163,9 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
                             ) : (
                               <RateForm bookingId={b.id} name={pn} />
                             )}
-                            {tip ? (
+                            {p.is_example ? (
+                              <p className="hint">Tips go to real promoters only. This one is an example.</p>
+                            ) : tip ? (
                               <p className="tipstate">
                                 <Icon name="star" size={16} />
                                 Tip {rwf(tip.amount)} · {tip.status === 'submitted' ? "we're checking it" : tip.status === 'confirmed' ? `on its way to ${pn}` : `delivered to ${pn} ✓`}
@@ -225,6 +228,11 @@ export default async function Tracker({ c, bookings }: { c: any; bookings: any[]
           )}
         </div>
       </div>
+      {practice && (
+        <p className="practicebar">
+          <b>🧪 Practice campaign</b> Example promoters: no real plays, no real money. The Tracka team plays their part, so you can see the whole road.
+        </p>
+      )}
       {song && <audio controls src={song} />}
       <div className="trackhead panel" style={{ marginTop: 14 }}>
         <CampaignJourney c={c} bookings={bookings} />

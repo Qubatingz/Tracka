@@ -41,7 +41,7 @@ export default async function SellerProfile({ params }: { params: { id: string }
             {s.location ? ' · ' + s.location : ''}
           </p>
           <h1>{s.name}</h1>
-          {s.is_example && <p className="exnote">Example promoter, just to show how Tracka works. Can&apos;t be booked.</p>}
+          {s.is_example && <p className="exnote">🧪 Example promoter, to show how Tracka works. Booking it is a free practice run.</p>}
           <div className="row" style={{ gap: '8px 14px' }}>
             {s.status === 'verified' ? (
               <span className="badge">
@@ -69,6 +69,11 @@ export default async function SellerProfile({ params }: { params: { id: string }
             <Badges s={s} st={stats} hasPackages={(packs || []).length > 0} />
           </div>
         </div>
+        {s.status === 'verified' && s.is_example && (
+          <Link className="btn btn-ghost" href={`/artist/new?seller=${s.id}`}>
+            🧪 Try a practice booking
+          </Link>
+        )}
         {s.status === 'verified' && !s.is_example && (
           <Link className="btn btn-yellow" href={`/artist/new?seller=${s.id}`}>
             Book {s.name}

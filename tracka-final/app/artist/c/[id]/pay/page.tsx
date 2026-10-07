@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import Icon from '@/components/Icon';
 import ArtistTabs from '@/components/ArtistTabs';
 import PayForm from '@/components/PayForm';
+import PracticePay from '@/components/PracticePay';
 import { getMe, getSettings } from '@/lib/data';
 import { catName, rwf } from '@/lib/util';
 import { bookingDates, niceDays } from '@/lib/calendar';
@@ -18,7 +19,8 @@ export default async function Pay({ params }: { params: { id: string } }) {
   const [{ data: bks }, settings] = await Promise.all([supabase.from('bookings').select('*').eq('campaign_id', c.id), getSettings(supabase)]);
   const bookings = bks || [];
   if (!bookings.length) redirect(`/artist/c/${c.id}`);
-  const { data: sellers } = await supabase.from('sellers').select('id,name,category,custom_category').in('id', bookings.map((b: any) => b.seller_id));
+  const { data: sellers } = await supabase.from('sellers').select('id,name,category,custom_category,is_example').in('id', bookings.map((b: any) => b.seller_id));
+  const practice = (sellers || []).some((s: any) => s.is_example);
   const total = bookings.reduce((t: number, b: any) => t + b.price, 0);
   const f = fee(total, settings.fee_percent);
   return (
@@ -36,7 +38,7 @@ export default async function Pay({ params }: { params: { id: string } }) {
         </li>
       </ol>
       <div className="head">
-        <h1>One payment.</h1>
+        <h1>{practice ? 'Practice run.' : 'One payment.'}</h1>
       </div>
       <div className="receipt">
         <div className="row between">
@@ -70,6 +72,10 @@ export default async function Pay({ params }: { params: { id: string } }) {
           <strong>{rwf(total + f)}</strong>
         </div>
       </div>
+      {practice ? (
+        <PracticePay campaignId={c.id} />
+      ) : (
+        <>
       <div className="shield">
         <Icon name="shield" size={28} />
         <div>
@@ -85,6 +91,8 @@ export default async function Pay({ params }: { params: { id: string } }) {
       <p className="hint" style={{ marginTop: 14 }}>
         By paying you agree to the <Link href="/terms">Terms and conditions</Link>. Changed your mind later? Email us: a refund is only possible if the seller hasn&apos;t played or posted yet. If a promoter declines or misses the due date, you always get that part back.
       </p>
+        </>
+      )}
       <p>
         <Link href={`/artist/c/${c.id}`}>← Back to promoters</Link>
       </p>

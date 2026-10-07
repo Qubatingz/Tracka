@@ -87,3 +87,11 @@ The **secret key** (`sb_secret_…`) and your **database password**. They are ne
 | 🔥 **Hot on Tracka** | A weekly chart on the home page of songs that went out. |
 
 Database: run `supabase/patch-02.sql` once (after `patch-01.sql`).
+
+## Practice bookings (v0.4)
+
+Example promoters can be booked in a **practice campaign**: no money, no real plays. The Tracka team plays their part in
+**Control room → Practice** (Accept → Dates → It's live → Proof), so the whole road can be tried from start to finish.
+Practice never goes in the money records, tips go to real promoters only, and example + real promoters never mix in one campaign.
+
+Database order: `schema.sql` → `update-v0.3.sql` → `patch-03.sql` → `examples.sql` (optional) → `patch-04.sql` → `remove-examples-button.sql`.

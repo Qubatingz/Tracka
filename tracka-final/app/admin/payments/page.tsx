@@ -17,7 +17,10 @@ export default async function AdminPayments() {
     supabase.from('tips').select('*').eq('status', 'submitted').order('created_at'),
   ]);
   const cids = (camps || []).map((c: any) => c.id);
-  const { data: bks } = cids.length ? await supabase.from('bookings').select('campaign_id,price').in('campaign_id', cids) : { data: [] as any[] };
+  const { data: bks } = cids.length ? await supabase.from('bookings').select('campaign_id,price,seller_id').in('campaign_id', cids) : { data: [] as any[] };
+  const { data: exS } = await supabase.from('sellers').select('id').eq('is_example', true);
+  const exIds = new Set((exS || []).map((s: any) => s.id));
+  const isPractice = (cid: string) => (bks || []).some((b: any) => b.campaign_id === cid && exIds.has(b.seller_id));
   return (
     <div className="page">
       <AdminTabs active="/admin/payments" counts={counts} />
@@ -30,10 +33,10 @@ export default async function AdminPayments() {
             <div className="grow">
               <strong>“{c.title}”</strong>
               <small>
-                Expect {rwf(t + fee(t, c.fee_percent))} · Txn {c.momo_txn} · from {c.pay_phone}
+                {isPractice(c.id) ? '🧪 Practice: no money to check' : `Expect ${rwf(t + fee(t, c.fee_percent))} · Txn ${c.momo_txn} · from ${c.pay_phone}`}
               </small>
             </div>
-            <RpcButton fn="admin_confirm_payment" args={{ p_campaign: c.id }} label="Money received" />
+            <RpcButton fn="admin_confirm_payment" args={{ p_campaign: c.id }} label={isPractice(c.id) ? 'Confirm practice' : 'Money received'} />
             <RpcButton fn="admin_reject_payment" args={{ p_campaign: c.id }} label="Not found" kind="red" confirmText="Send this payment back to the artist?" />
           </div>
         );

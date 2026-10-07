@@ -8,6 +8,7 @@ export default function AdminTabs({ active, counts = {} as Record<string, number
     ['/admin/songs', 'Songs'],
     ['/admin/proofs', 'Submissions'],
     ['/admin/payouts', 'Payouts'],
+    ['/admin/practice', 'Practice'],
     ['/admin/settings', 'Settings'],
   ];
   return (

@@ -15,7 +15,7 @@ export async function adminPage() {
     s.from('bookings').select('id', head).eq('status', 'approved'),
     s.from('tips').select('id', head).eq('status', 'confirmed'),
     s.from('bookings').select('id', head).in('status', ['declined', 'refunded']).is('refund_sent_at', null),
-    Promise.resolve({ count: 0 }),
+    s.from('bookings').select('id,sellers!inner(id)', head).eq('sellers.is_example', true).in('status', ['booked', 'scheduled', 'live']),
   ]);
   const counts: Record<string, number> = {
     '/admin/promoters': a.count || 0,
@@ -23,7 +23,7 @@ export async function adminPage() {
     '/admin/songs': d.count || 0,
     '/admin/proofs': (e.count || 0) + (f.count || 0),
     '/admin/payouts': (g.count || 0) + (h.count || 0) + (i.count || 0),
+    '/admin/practice': j.count || 0,
   };
-  void j;
   return { ...me, ok: true, counts };
 }

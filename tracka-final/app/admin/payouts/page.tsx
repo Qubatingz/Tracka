@@ -3,6 +3,7 @@ import AdminHead from '@/components/AdminHead';
 import Nothing from '@/components/Nothing';
 import Icon from '@/components/Icon';
 import RpcForm from '@/components/RpcForm';
+import RpcButton from '@/components/RpcButton';
 import { adminPage } from '@/lib/admin';
 import { rwf } from '@/lib/util';
 
@@ -22,11 +23,12 @@ export default async function AdminPayouts() {
   const sids = Array.from(new Set(all.map((b: any) => b.seller_id)));
   const cids = Array.from(new Set(all.map((b: any) => b.campaign_id)));
   const [{ data: sellers }, { data: priv }, { data: camps }] = await Promise.all([
-    sids.length ? supabase.from('sellers').select('id,name').in('id', sids) : Promise.resolve({ data: [] as any[] }),
+    sids.length ? supabase.from('sellers').select('id,name,is_example').in('id', sids) : Promise.resolve({ data: [] as any[] }),
     sids.length ? supabase.from('seller_private').select('seller_id,momo').in('seller_id', sids) : Promise.resolve({ data: [] as any[] }),
     cids.length ? supabase.from('campaigns').select('id,title,pay_phone').in('id', cids) : Promise.resolve({ data: [] as any[] }),
   ]);
   const name = (sid: string) => (sellers || []).find((s: any) => s.id === sid)?.name || 'Promoter';
+  const ex = (sid: string) => !!(sellers || []).find((s: any) => s.id === sid)?.is_example;
   const momo = (sid: string) => (priv || []).find((p: any) => p.seller_id === sid)?.momo || '—';
   const camp = (cid: string) => (camps || []).find((c: any) => c.id === cid) || ({} as any);
   const refField = [{ name: 'p_ref', label: 'MoMo transaction ID (optional)', placeholder: 'From your MoMo SMS' }];
@@ -45,12 +47,20 @@ export default async function AdminPayouts() {
               {rwf(b.price)} → {name(b.seller_id)}
             </strong>
             <small>For “{camp(b.campaign_id).title}” · approved proof</small>
-            <span className="momo">
-              <Icon name="phone" size={16} />
-              MoMo {momo(b.seller_id)}
-            </span>
+            {ex(b.seller_id) ? (
+              <span className="momo">🧪 Practice: nothing to send</span>
+            ) : (
+              <span className="momo">
+                <Icon name="phone" size={16} />
+                MoMo {momo(b.seller_id)}
+              </span>
+            )}
           </div>
-          <RpcForm fn="admin_mark_paid" args={{ p_booking: b.id }} fields={refField} submit="✓ I sent it" inline />
+          {ex(b.seller_id) ? (
+            <RpcButton fn="admin_mark_paid" args={{ p_booking: b.id, p_ref: 'PRACTICE' }} label="✓ Mark practice paid" />
+          ) : (
+            <RpcForm fn="admin_mark_paid" args={{ p_booking: b.id }} fields={refField} submit="✓ I sent it" inline />
+          )}
         </div>
       ))}
       {(tipouts || []).length > 0 && <h2 className="st">Tips to send (100% to the promoter)</h2>}
@@ -80,12 +90,20 @@ export default async function AdminPayouts() {
             <small>
               {name(b.seller_id)} · “{camp(b.campaign_id).title}”
             </small>
-            <span className="momo">
-              <Icon name="phone" size={16} />
-              MoMo {camp(b.campaign_id).pay_phone || '—'}
-            </span>
+            {ex(b.seller_id) ? (
+              <span className="momo">🧪 Practice: nothing to send</span>
+            ) : (
+              <span className="momo">
+                <Icon name="phone" size={16} />
+                MoMo {camp(b.campaign_id).pay_phone || '—'}
+              </span>
+            )}
           </div>
-          <RpcForm fn="admin_mark_refund_sent" args={{ p_booking: b.id }} fields={refField} submit="✓ I sent it" inline />
+          {ex(b.seller_id) ? (
+            <RpcButton fn="admin_mark_refund_sent" args={{ p_booking: b.id, p_ref: 'PRACTICE' }} label="✓ Mark practice done" />
+          ) : (
+            <RpcForm fn="admin_mark_refund_sent" args={{ p_booking: b.id }} fields={refField} submit="✓ I sent it" inline />
+          )}
         </div>
       ))}
     </div>

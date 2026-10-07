@@ -29,6 +29,12 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
   const booked: Record<string, any> = {};
   for (const b of bookings) booked[b.seller_id] = b;
   const statOf = (id: string) => stats.find((s: any) => s.seller_id === id);
+  const isEx = (id: string) => !!sellers.find((s: any) => s.id === id)?.is_example;
+  const practice = bookings.some((b: any) => isEx(b.seller_id));
+  const real = bookings.some((b: any) => !isEx(b.seller_id));
+  // example and real promoters never mix in one campaign
+  const blockedFor = (p: any) =>
+    booked[p.id] ? '' : p.is_example && real ? 'Example promoters are for practice. Start a new campaign to try them.' : !p.is_example && practice ? 'This is a practice campaign. Start a new campaign to book real promoters.' : '';
   const packsOf = (id: string) => packages.filter((x: any) => x.seller_id === id).sort((a: any, b: any) => a.plays - b.plays);
   const openSeller = (id: string) => {
     const bk = booked[id];
@@ -107,6 +113,11 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
       {err && (
         <p className="notice err" role="alert">
           {err}
+        </p>
+      )}
+      {practice && (
+        <p className="practicebar">
+          <b>🧪 Practice campaign</b> You picked example promoters: no money, and you&apos;ll see the whole road. Real promoters need a new campaign.
         </p>
       )}
       <div className="filters">
@@ -225,9 +236,9 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
                       <button type="button" className="btn btn-dark btn-sm" aria-pressed="true" disabled={busy} onClick={() => remove(p.id)}>
                         <Icon name="check" size={16} /> Added
                       </button>
-                    ) : p.is_example ? (
-                      <span className="btn btn-ghost btn-sm" aria-disabled="true" title="Example promoters can't be booked" style={{ opacity: 0.6 }}>
-                        Example
+                    ) : blockedFor(p) ? (
+                      <span className="btn btn-ghost btn-sm" aria-disabled="true" title={blockedFor(p)} style={{ opacity: 0.6 }}>
+                        {p.is_example ? 'Practice only' : 'Real only'}
                       </span>
                     ) : (
                       <button type="button" className="btn btn-yellow btn-sm" aria-pressed="false" disabled={busy} onClick={() => add(p.id, null, [])}>
@@ -344,12 +355,13 @@ export default function Picker({ campaignId, bookings, sellers, stats, packages 
                 )}
               </div>
             )}
-            {s.is_example && <p className="exnote">Example promoter, just for show. Look around, but pick a real one to book.</p>}
+            {s.is_example && <p className="exnote">🧪 Example promoter: booking it makes a <b>practice campaign</b>. No real play and no money; you see every step of the road.</p>}
+            {blockedFor(s) && <p className="notice err">{blockedFor(s)}</p>}
             <div className="dfoot">
-              <button type="button" className="btn btn-yellow" disabled={!shown.length || busy || s.is_example} onClick={() => add(s.id, pkg || null, shown)}>
+              <button type="button" className="btn btn-yellow" disabled={!shown.length || busy || !!blockedFor(s)} onClick={() => add(s.id, pkg || null, shown)}>
                 {mainLabel || (need === 1 ? 'Pick a free day' : `Pick ${need} free days`)}
               </button>
-              {!shown.length && !s.is_example && (
+              {!shown.length && !blockedFor(s) && (
                 <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => add(s.id, pkg || null, [])}>
                   {booked[s.id] ? 'Save, choose dates later' : need === 1 ? 'Add, choose date later' : 'Add, choose dates later'}
                 </button>
